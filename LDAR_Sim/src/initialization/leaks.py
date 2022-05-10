@@ -86,12 +86,22 @@ def generate_leak_timeseries(program, site, leak_count=0):
     n_timesteps = (datetime(*program['end_date'])-start_date).days
     site_timeseries = []
     for t in range(n_timesteps):
-        if random.binomial(1, program['emissions']['LPR']):
-            cur_dt = start_date + timedelta(days=t)
-            site['cum_leaks'] += 1
-            site_timeseries.append(generate_leak(program, site, cur_dt, site['cum_leaks']))
+        if program['subtype_file']:
+            if random.binomial(1, site['LPR']):
+                cur_dt = start_date + timedelta(days=t)
+                site['cum_leaks'] += 1
+                site_timeseries.append(generate_leak(
+                    program, site, cur_dt, site['cum_leaks']))
+            else:
+                site_timeseries.append(None)
         else:
-            site_timeseries.append(None)
+            if random.binomial(1, program['emissions']['LPR']):
+                cur_dt = start_date + timedelta(days=t)
+                site['cum_leaks'] += 1
+                site_timeseries.append(generate_leak(
+                    program, site, cur_dt, site['cum_leaks']))
+            else:
+                site_timeseries.append(None)
     return site_timeseries
 
 
@@ -105,16 +115,35 @@ def generate_initial_leaks(program, site):
     Returns:
         list: List of leaks at a site
     """
-    # Get distribit
-    n_leaks = random.binomial(program['NRd'], program['emissions']['LPR'])
-    prog_start_date = datetime(*program['start_date'])
-    initial_site_leaks = []
-    site.update({'initial_leaks': n_leaks, 'cum_leaks': n_leaks})
-    leak_count = 0
-    for leak in range(n_leaks):
-        leak_count += 1
-        days_active = random.randint(0, high=program['NRd'])
-        leak_start_date = prog_start_date - timedelta(days=days_active)
-        initial_site_leaks.append(
-            generate_leak(program, site, leak_start_date, leak_count, days_active))
+    if program['subtype_file']:
+        # If subtype file exists, generate leaks based on site-types?
+        n_leaks = 0
+        for s in site:
+            # multiple by the percentage of the site type to all sites?
+            n_leaks += random.binomial(site['NRd'], site['LPR'])
+        prog_start_date = datetime(*program['start_date'])
+        initial_site_leaks = []
+        site.update({'initial_leaks': n_leaks, 'cum_leaks': n_leaks})
+        leak_count = 0
+        for leak in range(n_leaks):
+            leak_count += 1
+            days_active = random.randint(0, high=program['NRd'])
+            leak_start_date = prog_start_date - timedelta(days=days_active)
+            initial_site_leaks.append(
+                generate_leak(program, site, leak_start_date, leak_count, days_active))
+        return initial_site_leaks
+
+    else:
+        # Get distribit
+        n_leaks = random.binomial(program['NRd'], program['emissions']['LPR'])
+        prog_start_date = datetime(*program['start_date'])
+        initial_site_leaks = []
+        site.update({'initial_leaks': n_leaks, 'cum_leaks': n_leaks})
+        leak_count = 0
+        for leak in range(n_leaks):
+            leak_count += 1
+            days_active = random.randint(0, high=program['NRd'])
+            leak_start_date = prog_start_date - timedelta(days=days_active)
+            initial_site_leaks.append(
+                generate_leak(program, site, leak_start_date, leak_count, days_active))
     return initial_site_leaks

@@ -55,6 +55,9 @@ class LdarSim:
         self.timeseries = timeseries
         self.active_leaks = []
 
+        # added variable
+        repair_file = False
+
         #  --- state variables ---
         self.state['campaigns'] = {}
         state['candidate_flags'] = {}
@@ -66,11 +69,15 @@ class LdarSim:
             state['empirical_sites'] = np.array(pd.read_csv(
                 params['input_directory'] / params['emissions']['vent_file']))
         if params['economics']['repair_costs']['file'] is not None:
+            repair_file = True
+            # Need to change here ########################################### read_csv needs index_col
+            # maybe have a variable that gets changed to true if repair_costs file present???
             params['economics']['repair_costs']['vals'] = np.array(pd.read_csv(
                 params['input_directory'] / params['economics']['repair_costs']['file']))
             # Read in the sites as a list of dictionaries
         if len(state['sites']) < 1:
-            state['sites'], _, _ = generate_sites(params, params['input_directory'])
+            state['sites'], _, _ = generate_sites(
+                params, params['input_directory'])
         state['max_leak_rate'] = params['emissions']['max_leak_rate']
         state['t'].set_UTC_offset(state['sites'])
 
@@ -121,10 +128,12 @@ class LdarSim:
                 if add_subtype:
                     if m_RS in site:
                         # if scheduled capture the RS value
-                        n_subtype_rs[site['subtype_code']].update({m_label: site[m_RS]})
+                        n_subtype_rs[site['subtype_code']].update(
+                            {m_label: site[m_RS]})
                     else:
                         # If set rs value to -1 (used for tracking later)
-                        n_subtype_rs[site['subtype_code']].update({m_label: -1})
+                        n_subtype_rs[site['subtype_code']].update(
+                            {m_label: -1})
                         # If the value changes set to None
                 elif m_RS in site and (n_rs[m_label] != site[m_RS] or n_rs[m_label] is None):
                     n_subtype_rs[site['subtype_code']].update({m_label: None})
@@ -132,7 +141,8 @@ class LdarSim:
                 # prior to the next campaign period were surveys can start earlier
                 # Calculate the site minimum interval
                 if m_RS in site and site[m_RS] != 0:
-                    site['{}_min_int'.format(m_label)] = floor(365/site[m_RS])  # *0.95
+                    site['{}_min_int'.format(m_label)] = floor(
+                        365/site[m_RS])  # *0.95
                 # Automatically assign 1 crew to followup if left unspecified
                 elif m_obj['n_crews'] is None:
                     m_obj['n_crews'] = 1
@@ -185,10 +195,12 @@ class LdarSim:
                     min_followups_sites = np.zeros(n_campaigns)
                 elif len(min_followups) == 1:
                     # apply value to all campaigns
-                    min_followups_sites = np.ones(n_campaigns)*min_followups[0]*n_sites
+                    min_followups_sites = np.ones(
+                        n_campaigns)*min_followups[0]*n_sites
                 else:
                     reps = int(ceil(n_campaigns/len(min_followups)))
-                    min_followups_sites = np.tile(np.array(min_followups) * n_sites, reps)
+                    min_followups_sites = np.tile(
+                        np.array(min_followups) * n_sites, reps)
 
                 self.state['campaigns'].update(
                     {midx:
@@ -209,13 +221,17 @@ class LdarSim:
         timeseries['total_daily_cost'] = np.zeros(params['timesteps'])
         timeseries['repair_cost'] = np.zeros(params['timesteps'])
         timeseries['verification_cost'] = np.zeros(params['timesteps'])
-        timeseries['natural_redund_tags'] = np.zeros(self.parameters['timesteps'])
+        timeseries['natural_redund_tags'] = np.zeros(
+            self.parameters['timesteps'])
         timeseries['natural_n_tags'] = np.zeros(self.parameters['timesteps'])
         timeseries['new_leaks'] = np.zeros(self.parameters['timesteps'])
-        timeseries['cum_repaired_leaks'] = np.zeros(self.parameters['timesteps'])
-        timeseries['daily_emissions_kg'] = np.zeros(self.parameters['timesteps'])
+        timeseries['cum_repaired_leaks'] = np.zeros(
+            self.parameters['timesteps'])
+        timeseries['daily_emissions_kg'] = np.zeros(
+            self.parameters['timesteps'])
         timeseries['n_tags'] = np.zeros(self.parameters['timesteps'])
-        timeseries['rolling_cost_estimate'] = np.zeros(self.parameters['timesteps'])
+        timeseries['rolling_cost_estimate'] = np.zeros(
+            self.parameters['timesteps'])
 
         # Initialize method(s) to be used; append to state
         calculate_daylight = False
@@ -223,7 +239,8 @@ class LdarSim:
             # Update method parameters
             m_obj_wr = params['methods'][m_label]
             if m_obj['scheduling']['route_planning']:
-                m_obj_wr['t_bw_sites']['vals'] = est_t_bw_sites(m_obj, state['sites'])
+                m_obj_wr['t_bw_sites']['vals'] = est_t_bw_sites(
+                    m_obj, state['sites'])
             if m_obj['n_crews'] is None:
                 m_obj_wr['n_crews'] = est_n_crews(m_obj, state['sites'])
             m_obj_wr['est_site_p_day'] = est_site_p_day(m_obj, state['sites'])
@@ -270,7 +287,8 @@ class LdarSim:
                 state['empirical_vents'].append(mc_vent_total)
 
             # Change negatives to zero
-            state['empirical_vents'] = [0 if i < 0 else i for i in state['empirical_vents']]
+            state['empirical_vents'] = [
+                0 if i < 0 else i for i in state['empirical_vents']]
 
         # HBD this is sooooo hacky Repair time seems like its wron
         if len(self.state['campaigns']) > 0:
@@ -321,7 +339,8 @@ class LdarSim:
                                 if s['facility_ID'] in cpgn['sites_followed_up']]
                     Non_FU_sites = [s for s in self.state['sites']
                                     if s['facility_ID'] not in cpgn['sites_followed_up']]
-                    makeup_cnt = cpgn['min_followups'][cpgn['current_campaign']] - len(FU_sites)
+                    makeup_cnt = cpgn['min_followups'][cpgn['current_campaign']
+                                                       ] - len(FU_sites)
                     if makeup_cnt < 0:
                         makeup_cnt = 0
                     flag_sites = random.sample(Non_FU_sites, int(makeup_cnt))
@@ -339,7 +358,8 @@ class LdarSim:
 
                 # Tag by natural if leak is due for NR
                 if leak['days_active'] == self.parameters['NRd']:
-                    update_tag(leak, site, self.timeseries, self.state['t'], 'natural')
+                    update_tag(leak, site, self.timeseries,
+                               self.state['t'], 'natural')
 
         self.timeseries['active_leaks'].append(len(self.active_leaks))
         self.timeseries['datetime'].append(self.state['t'].current_date)
@@ -403,8 +423,10 @@ class LdarSim:
                     has_repairs = True
                     lk['status'] = 'repaired'
                     lk['date_repaired'] = state['t'].current_date
-                    lk['repair_delay'] = (lk['date_repaired'] - lk['date_tagged']).days
-                    repair_cost = int(choice(params['economics']['repair_costs']['vals']))
+                    lk['repair_delay'] = (
+                        lk['date_repaired'] - lk['date_tagged']).days
+                    repair_cost = int(
+                        choice(params['economics']['repair_costs']['vals']))
                     timeseries['repair_cost'][state['t'].current_timestep] += repair_cost
                     timeseries['verification_cost'][
                         state['t'].current_timestep] += params['economics']['verification_cost']
@@ -435,7 +457,8 @@ class LdarSim:
             cum_repaired_leaks += len(site['repaired_leaks'])
             n_tags += site['n_new_leaks']
             # convert g/s to kg/day
-            daily_emissions_kg += sum([lk['rate'] for lk in site['active_leaks']]) * 86.4
+            daily_emissions_kg += sum([lk['rate']
+                                      for lk in site['active_leaks']]) * 86.4
         cur_ts = [state['t'].current_timestep]
         timeseries['new_leaks'][cur_ts] = new_leaks
         timeseries['cum_repaired_leaks'][cur_ts] = cum_repaired_leaks
@@ -457,12 +480,15 @@ class LdarSim:
                 site['active_leak_cnt'] = len(site['active_leaks'])
                 site['repaired_leak_cnt'] = len(site['repaired_leaks'])
                 site['active_leak_emis'] = sum([
-                    (lk['days_active'] - lk['days_active_prog_start']) * lk['rate'] * 86.4
+                    (lk['days_active'] - lk['days_active_prog_start']) *
+                    lk['rate'] * 86.4
                     for lk in site['active_leaks']])
                 site['repaired_leak_emis'] = sum([
-                    (lk['days_active'] - lk['days_active_prog_start']) * lk['rate'] * 86.4
+                    (lk['days_active'] - lk['days_active_prog_start']) *
+                    lk['rate'] * 86.4
                     for lk in site['repaired_leaks']])
-                site['total_emissions_kg'] = site['active_leak_emis'] + site['repaired_leak_emis']
+                site['total_emissions_kg'] = site['active_leak_emis'] + \
+                    site['repaired_leak_emis']
 
                 leaks += site['active_leaks'] + site['repaired_leaks']
                 del site['n_new_leaks']
@@ -473,23 +499,28 @@ class LdarSim:
 
             # Create some new variables for plotting
             site_df['cum_frac_sites'] = list(site_df.index)
-            site_df['cum_frac_sites'] = site_df['cum_frac_sites'] / max(site_df['cum_frac_sites'])
+            site_df['cum_frac_sites'] = site_df['cum_frac_sites'] / \
+                max(site_df['cum_frac_sites'])
             site_df['cum_frac_emissions'] = np.cumsum(
                 sorted(site_df['total_emissions_kg'], reverse=True))
             site_df['cum_frac_emissions'] = site_df['cum_frac_emissions'] \
                 / max(site_df['cum_frac_emissions'])
-            site_df['mean_rate_kg_day'] = site_df['total_emissions_kg'] / params['timesteps']
+            site_df['mean_rate_kg_day'] = site_df['total_emissions_kg'] / \
+                params['timesteps']
             leaks_active = leak_df[leak_df.status != 'repaired'] \
                 .sort_values('rate', ascending=False)
             leaks_repaired = leak_df[leak_df.status == 'repaired'] \
                 .sort_values('rate', ascending=False)
 
-            leaks_active['cum_frac_leaks'] = list(np.linspace(0, 1, len(leaks_active)))
+            leaks_active['cum_frac_leaks'] = list(
+                np.linspace(0, 1, len(leaks_active)))
             leaks_active['cum_rate'] = np.cumsum(leaks_active['rate'])
-            leaks_active['cum_frac_rate'] = leaks_active['cum_rate'] / max(leaks_active['cum_rate'])
+            leaks_active['cum_frac_rate'] = leaks_active['cum_rate'] / \
+                max(leaks_active['cum_rate'])
 
             if len(leaks_repaired) > 0:
-                leaks_repaired['cum_frac_leaks'] = list(np.linspace(0, 1, len(leaks_repaired)))
+                leaks_repaired['cum_frac_leaks'] = list(
+                    np.linspace(0, 1, len(leaks_repaired)))
                 leaks_repaired['cum_rate'] = np.cumsum(leaks_repaired['rate'])
                 leaks_repaired['cum_frac_rate'] = leaks_repaired['cum_rate'] \
                     / max(leaks_repaired['cum_rate'])
@@ -509,7 +540,8 @@ class LdarSim:
                 / 'sites_output_{}.csv'.format(params['simulation']), index=False)
 
             # Write metadata
-            f_name = params['output_directory'] / "metadata_{}.txt".format(params['simulation'])
+            f_name = params['output_directory'] / \
+                "metadata_{}.txt".format(params['simulation'])
             metadata = open(f_name, 'w')
             metadata.write(str(params) + '\n' + str(datetime.datetime.now()))
             metadata.close()

@@ -611,7 +611,7 @@ If enabled, the leaks will be stored locally in /inputs/generation after running
 
 **Notes of caution:** For non-mandatory columns (columns B onward), the number of leaks required for the distribution should increase exponentially for each new column, because leak rate sampling will become increasingly specific. Categories must also be sufficiently exhaustive to be representative.
 
-#### leak_use
+#### leak_file_use
 
 **Data type:** String
 
