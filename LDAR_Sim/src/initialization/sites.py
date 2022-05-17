@@ -54,60 +54,60 @@ def init_generator_files(generator_dir, sim_params, in_dir, baseline_prog):
     pickle.dump(sim_params, open(generator_dir / 'params.p', "wb"))
 
 
-# def get_subtype_dist(program, wd):
-#     # Get Sub_type data
-#     if program['subtype_file']:
-#         subtypes = pd.read_csv(
-#             wd / program['subtype_file'],
-#             index_col='subtype_code')
-#         program['subtypes'] = subtypes.to_dict('index')
-#         for st in program['subtypes']:
-#             program['subtypes'][st]['leak_rate_units'] = program['emissions']['units']
-#         unpackage_dist(program)
-#     elif program['emissions']['leak_file_use'] == 'fit':
-#         program['subtypes'] = {0: {
-#             'leak_rate_dist': fit_dist(
-#                 samples=program['empirical_leaks'],
-#                 dist_type='lognorm'),
-#             'leak_rate_units': ['gram', 'second']}}
-#     elif not program['emissions']['subtype_leak_dist_file']:
-#         program['subtypes'] = {0: {
-#             'dist_type': program['emissions']['leak_dist_type'],
-#             'dist_scale': program['emissions']['leak_dist_params'][0],
-#             'dist_shape': program['emissions']['leak_dist_params'][1:],
-#             'leak_rate_units': program['emissions']['units']}}
-#         unpackage_dist(program)
-
-def get_subtype(program, wd):
-    # Get sub_type data
-    if program['subtype_file']:
-        subtype = pd.read_csv( 
-            wd / program['emissions']['subtype_file'], index_col='subtype_code'
-        )
+def get_subtype_dist(program, wd):
+    # Get Sub_type data
+    if program['emissions']['subtype_leak_dist_file']:
+        subtypes = pd.read_csv(
+            wd / program['emissions']['subtype_leak_dist_file'],
+            index_col='subtype_code')
+        program['subtypes'] = subtypes.to_dict('index')
         for st in program['subtypes']:
-            program['subtypes'][st] = subtype[st]
-    else:     
-        if program['emissions']['leak_file_use'] == 'fit':
-            program['subtypes'] = {0: {
-                'leak_rate_dist': fit_dist(
-                    samples=program['empirical_leaks'],
-                    dist_type='lognorm'),
-                'leak_rate_units': ['gram', 'second']}}
-        elif not program['emissions']['subtype_leak_dist_file']:
-            program['subtypes'] = {0: {
-                'dist_type': program['emissions']['leak_dist_type'],
-                'dist_scale': program['emissions']['leak_dist_params'][0],
-                'dist_shape': program['emissions']['leak_dist_params'][1:],
-                'leak_rate_units': program['emissions']['units']}}
+            program['subtypes'][st]['leak_rate_units'] = program['emissions']['units']
+        unpackage_dist(program)
+    elif program['emissions']['leak_file_use'] == 'fit':
+        program['subtypes'] = {0: {
+            'leak_rate_dist': fit_dist(
+                samples=program['empirical_leaks'],
+                dist_type='lognorm'),
+            'leak_rate_units': ['gram', 'second']}}
+    elif not program['emissions']['subtype_leak_dist_file']:
+        program['subtypes'] = {0: {
+            'dist_type': program['emissions']['leak_dist_type'],
+            'dist_scale': program['emissions']['leak_dist_params'][0],
+            'dist_shape': program['emissions']['leak_dist_params'][1:],
+            'leak_rate_units': program['emissions']['units']}}
+        unpackage_dist(program)
+
+
+def get_subtype_file(program, wd):
+    if program['subtype_file']:
+        subtypes = pd.read_csv(
+            wd / program['subtype_file'],
+            index_col='subtype_code')
+        program['subtypes'] = subtypes.to_dict('index')
+        for st in program['subtypes']:
+            program['subtypes'][st]['leak_rate_units'] = program['emissions']['units']
+        unpackage_dist(program)
+    elif program['emissions']['leak_file_use'] == 'fit':
+        program['subtypes'] = {0: {
+            'leak_rate_dist': fit_dist(
+                samples=program['empirical_leaks'],
+                dist_type='lognorm'),
+            'leak_rate_units': ['gram', 'second']}}
+    elif not program['subtype_file']:
+        program['subtypes'] = {0: {
+            'dist_type': program['emissions']['leak_dist_type'],
+            'dist_scale': program['emissions']['leak_dist_params'][0],
+            'dist_shape': program['emissions']['leak_dist_params'][1:],
+            'leak_rate_units': program['emissions']['units']}}
+        unpackage_dist(program)
 
 
 def generate_sites(program, in_dir):
     """[summary]
-
     Args:
         program ([type]): [description]
         in_dir ([type]): [description]
-
     Returns:
         [type]: [description]
     """
@@ -137,19 +137,18 @@ def generate_sites(program, in_dir):
         program['emissions']['empirical_leaks'] = np.array(
             pd.read_csv(in_dir / program['emissions']['leak_file']).iloc[:, 0])
 
-    #get_subtype_dist(program, in_dir)
-    get_subtype(program, in_dir)
+    # get_subtype_dist(program, in_dir)
+    get_subtype_file(program, in_dir)
 
     leak_timeseries = {}
     initial_leaks = {}
     # Additional variable(s) for each site
     for site in sites:
         # Add a distribution and unit for each leak
-        # And add LPR, repair cost, etc.
         if len(program['subtypes']) > 1:
             # Get all keys from subtypes
             for col in program['subtypes'][next(iter(program['subtypes']))]:
-                site[col] = program['subtypes'][(site['subtype_code'])][col]
+                site[col] = program['subtypes'][site['subtype_code']][col]
         elif len(program['subtypes']) > 0:
             site.update(program['subtypes'][0])
 
@@ -167,7 +166,8 @@ def regenerate_sites(program, prog_0_sites, in_dir):
     for example, the survey frequency or survey time could be different.
     '''
     # Read in the sites as a list of dictionaries
-    sites_in = pd.read_csv(in_dir / program['infrastructure_file'], index_col='facility_ID')
+    sites_in = pd.read_csv(
+        in_dir / program['infrastructure_file'], index_col='facility_ID')
     # Add facility ID back into object
     sites_in['facility_ID'] = sites_in.index
     sites = sites_in.to_dict('index')
