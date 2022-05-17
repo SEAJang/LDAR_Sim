@@ -19,6 +19,7 @@ emissions:
   LPR: 0.0065
   max_leak_rate: 100000.0
   subtype_leak_dist_file: "_placeholder_str_"
+  subtype_file: "_placeholder_str_"
   units: ['kilogram', 'hour']
   vent_file: 'site_rates.csv'
 NRd: 365

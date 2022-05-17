@@ -81,12 +81,17 @@ def generate_leak_timeseries(program, site, leak_count=0):
     Returns:
         list: Timeseries of leaks at a site. None is a placeholder for days without leaks
     """
+    LPR = None
+    if program['emissions']['subtype_file'] is not None:
+        LPR = site['LPR']
+    else:
+        LPR = program['emissions']['LPR']
     # Get leak timeseries
     start_date = datetime(*program['start_date'])
     n_timesteps = (datetime(*program['end_date'])-start_date).days
     site_timeseries = []
     for t in range(n_timesteps):
-        if random.binomial(1, program['emissions']['LPR']):
+        if random.binomial(1, LPR):
             cur_dt = start_date + timedelta(days=t)
             site['cum_leaks'] += 1
             site_timeseries.append(generate_leak(program, site, cur_dt, site['cum_leaks']))
@@ -105,15 +110,23 @@ def generate_initial_leaks(program, site):
     Returns:
         list: List of leaks at a site
     """
-    # Get distribit
-    n_leaks = random.binomial(program['NRd'], program['emissions']['LPR'])
+    NRd = None
+    LPR = None
+    if program['emissions']['subtype_file'] is not None:
+        NRd = site['NRd']
+        LPR = site['LPR']
+    else:
+        NRd = program['NRd']
+        LPR = program['emissions']['LPR']
+
+    n_leaks = random.binomial(NRd, LPR)
     prog_start_date = datetime(*program['start_date'])
     initial_site_leaks = []
     site.update({'initial_leaks': n_leaks, 'cum_leaks': n_leaks})
     leak_count = 0
     for leak in range(n_leaks):
         leak_count += 1
-        days_active = random.randint(0, high=program['NRd'])
+        days_active = random.randint(0, high=NRd)
         leak_start_date = prog_start_date - timedelta(days=days_active)
         initial_site_leaks.append(
             generate_leak(program, site, leak_start_date, leak_count, days_active))
