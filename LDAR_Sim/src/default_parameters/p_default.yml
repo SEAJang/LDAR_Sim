@@ -10,6 +10,7 @@ site_samples: 50
 subtype_times_file: "_placeholder_str_"
 consider_weather: False
 repair_delay: 14
+subtype_file: "_placeholder_str_"
 emissions:
   consider_venting: False
   leak_dist_params: [-2.776, 1.462]
@@ -19,7 +20,6 @@ emissions:
   LPR: 0.0065
   max_leak_rate: 100000.0
   subtype_leak_dist_file: "_placeholder_str_"
-  subtype_file: "_placeholder_str_"
   units: ['kilogram', 'hour']
   vent_file: 'site_rates.csv'
 NRd: 365

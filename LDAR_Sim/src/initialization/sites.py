@@ -80,21 +80,22 @@ def get_subtype_dist(program, wd):
 
 
 def get_subtype_file(program, wd):
-    if program['emissions']['subtype_file']:
+    if program['subtype_file']:
         subtypes = pd.read_csv(
-            wd / program['emissions']['subtype_file'],
+            wd / program['subtype_file'],
             index_col='subtype_code')
         program['subtypes'] = subtypes.to_dict('index')
         for st in program['subtypes']:
             program['subtypes'][st]['leak_rate_units'] = program['emissions']['units']
         unpackage_dist(program)
+
     elif program['emissions']['leak_file_use'] == 'fit':
         program['subtypes'] = {0: {
             'leak_rate_dist': fit_dist(
                 samples=program['empirical_leaks'],
                 dist_type='lognorm'),
             'leak_rate_units': ['gram', 'second']}}
-    elif not program['emissions']['subtype_file']:
+    elif not program['subtype_file']:
         program['subtypes'] = {0: {
             'dist_type': program['emissions']['leak_dist_type'],
             'dist_scale': program['emissions']['leak_dist_params'][0],
@@ -176,9 +177,19 @@ def regenerate_sites(program, prog_0_sites, in_dir):
     for site_or in prog_0_sites:
         s_idx = site_or['facility_ID']
         new_site = copy.deepcopy(sites[s_idx])
-        new_site.update({'cum_leaks': site_or['cum_leaks'],
-                         'initial_leaks': site_or['initial_leaks'],
-                         'leak_rate_dist': site_or['leak_rate_dist'],
-                         'leak_rate_units': site_or['leak_rate_units']})
+        if program['subtype_file'] is not None:
+            new_site.update({'cum_leaks': site_or['cum_leaks'],
+                            'initial_leaks': site_or['initial_leaks'],
+                             'leak_rate_dist': site_or['leak_rate_dist'],
+                             'leak_rate_units': site_or['leak_rate_units'],
+                             'repair_costs': site_or['repair_costs'],
+                             'NRd': site_or['NRd'],
+                             'LPR': site_or['LPR']})
+        else:
+            new_site.update({'cum_leaks': site_or['cum_leaks'],
+                            'initial_leaks': site_or['initial_leaks'],
+                             'leak_rate_dist': site_or['leak_rate_dist'],
+                             'leak_rate_units': site_or['leak_rate_units']})
+
         out_sites.append(new_site)
     return out_sites

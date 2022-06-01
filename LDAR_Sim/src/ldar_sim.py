@@ -168,6 +168,7 @@ class LdarSim:
         timeseries['daily_emissions_kg'] = np.zeros(self.parameters['timesteps'])
         timeseries['n_tags'] = np.zeros(self.parameters['timesteps'])
         timeseries['rolling_cost_estimate'] = np.zeros(self.parameters['timesteps'])
+        timeseries['emis_intensity'] = np.zeros(self.parameters['timesteps'])
 
         # Initialize method(s) to be used; append to state
         calculate_daylight = False
@@ -244,12 +245,16 @@ class LdarSim:
         """
         self.active_leaks = []
         for site in self.state['sites']:
+            if (self.parameters['subtype_file'] is not None):
+                NRd = site['NRd']
+            else:
+                NRd = self.parameters['NRd']
             for leak in site['active_leaks']:
                 leak['days_active'] += 1
                 self.active_leaks.append(leak)
 
                 # Tag by natural if leak is due for NR
-                if leak['days_active'] == self.parameters['NRd']:
+                if leak['days_active'] == NRd:
                     update_tag(leak, site, self.timeseries, self.state['t'], 'natural')
 
         self.timeseries['active_leaks'].append(len(self.active_leaks))
@@ -263,11 +268,15 @@ class LdarSim:
         # First, determine whether each site gets a new leak or not
         params = self.parameters
         for site in self.state['sites']:
+            if (self.parameters['subtype_file'] is not None):
+                LPR = site['LPR']
+            else:
+                LPR = self.parameters['emissions']['LPR']
             new_leak = None
             sidx = site['facility_ID']
             if params['pregenerate_leaks']:
                 new_leak = params['leak_timeseries'][sidx][self.state['t'].current_timestep]
-            elif binomial(1, self.parameters['emissions']['LPR']):
+            elif binomial(1, LPR):
                 new_leak = generate_leak(
                     params, site, self.state['t'].current_date, site['cum_leaks'])
             if new_leak is not None:
@@ -296,6 +305,10 @@ class LdarSim:
         params = self.parameters
         timeseries = self.timeseries
         state = self.state
+        if params['subtype_file'] is not None:
+            file_repair_cost = True
+        else:
+            file_repair_cost = False
         for site in state['sites']:
             has_repairs = False
             for lidx, lk in enumerate(site['active_leaks']):
@@ -315,7 +328,11 @@ class LdarSim:
                     lk['status'] = 'repaired'
                     lk['date_repaired'] = state['t'].current_date
                     lk['repair_delay'] = (lk['date_repaired'] - lk['date_tagged']).days
-                    repair_cost = int(choice(params['economics']['repair_costs']['vals']))
+
+                    if file_repair_cost:
+                        repair_cost = int(site['repair_costs'])
+                    else:
+                        repair_cost = int(choice(params['economics']['repair_costs']['vals']))
                     timeseries['repair_cost'][state['t'].current_timestep] += repair_cost
                     timeseries['verification_cost'][
                         state['t'].current_timestep] += params['economics']['verification_cost']
@@ -340,6 +357,7 @@ class LdarSim:
         n_tags = 0
         cum_repaired_leaks = 0
         daily_emissions_kg = 0
+        emis_intensity = 0
         # Update timeseries
         for site in state['sites']:
             new_leaks += site['n_new_leaks']
@@ -347,13 +365,24 @@ class LdarSim:
             n_tags += site['n_new_leaks']
             # convert g/s to kg/day
             daily_emissions_kg += sum([lk['rate'] for lk in site['active_leaks']]) * 86.4
+            # convert e3m3/day to kg/day, grab the average leak rate
+            if (len(site['active_leaks']) != 0):
+                emis_intensity += sum([lk['rate'] for lk in site['active_leaks']]
+                                      )/len(site['active_leaks']) * 86.4 / (site['production'] * 678)
+        # calculate the daily average
+        emis_intensity = emis_intensity / len(state['sites'])
+
         cur_ts = [state['t'].current_timestep]
+        timeseries['emis_intensity'][cur_ts] = emis_intensity
+
         timeseries['new_leaks'][cur_ts] = new_leaks
         timeseries['cum_repaired_leaks'][cur_ts] = cum_repaired_leaks
         timeseries['daily_emissions_kg'][cur_ts] = daily_emissions_kg
         timeseries['rolling_cost_estimate'][cur_ts] = sum(timeseries['total_daily_cost']) \
             / (len(timeseries['rolling_cost_estimate']) + 1) * 365 / 200
         timeseries['n_tags'][state['t'].current_timestep] = n_tags
+
+        # need to calculate the average daily intensity per site
         return
 
     def finalize(self):
@@ -390,6 +419,9 @@ class LdarSim:
             site_df['cum_frac_emissions'] = site_df['cum_frac_emissions'] \
                 / max(site_df['cum_frac_emissions'])
             site_df['mean_rate_kg_day'] = site_df['total_emissions_kg'] / params['timesteps']
+
+            site_df['emis_intensity'] = site_df['mean_rate_kg_day'] / (site['production'] * 678)
+
             leaks_active = leak_df[leak_df.status != 'repaired'] \
                 .sort_values('rate', ascending=False)
             leaks_repaired = leak_df[leak_df.status == 'repaired'] \

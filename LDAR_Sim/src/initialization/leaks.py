@@ -82,7 +82,7 @@ def generate_leak_timeseries(program, site, leak_count=0):
         list: Timeseries of leaks at a site. None is a placeholder for days without leaks
     """
     LPR = None
-    if program['emissions']['subtype_file'] is not None:
+    if program['subtype_file'] is not None:
         LPR = site['LPR']
     else:
         LPR = program['emissions']['LPR']
@@ -112,7 +112,7 @@ def generate_initial_leaks(program, site):
     """
     NRd = None
     LPR = None
-    if program['emissions']['subtype_file'] is not None:
+    if program['subtype_file'] is not None:
         NRd = site['NRd']
         LPR = site['LPR']
     else:
