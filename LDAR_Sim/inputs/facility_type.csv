@@ -1,0 +1,8 @@
+subtype_code,subtype, survey_time, RS, LPR, NRd, emiss_dist_type, emiss_dist_mu, emiss_dist_sigma, repair_cost
+'CS','compressor station',100,4,0.0065,365,'lognorm',-2.776,1.462,200
+'PL','pipeline',100,1,0.0065,365,'lognorm',-2.776,1.462,600
+'R','refinery',100,2,0.0065,365,'lognorm',-2.776,1.462,200
+'MS','meter station',100,2,0.0065,365,'lognorm',-2.776,1.462,100
+'IF','injection facility',100,4,0.0065,365,'lognorm',-2.776,1.462,300
+'GP','gas plant',100,4,0.0065,365,'lognorm',-2.776,1.462,200
+'OW','oil well',100,4,0.0065,365,'lognorm',-2.776,1.462,400

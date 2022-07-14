@@ -48,7 +48,8 @@ class Schedule():
         self.scheduling = self.config['scheduling']
         # define a list of home bases for crew and redefine the the initial location of crew
         if self.scheduling['route_planning']:
-            hb_file = self.parameters['input_directory'] / self.scheduling['home_bases_files']
+            hb_file = self.parameters['input_directory'] / \
+                self.scheduling['home_bases_files']
             HB = pd.read_csv(hb_file, sep=',')
             self.crew_lon = self.scheduling['LDAR_crew_init_location'][0]
             self.crew_lat = self.scheduling['LDAR_crew_init_location'][1]
@@ -82,81 +83,76 @@ class Schedule():
         start_lon, start_lat = self.crew_lon, self.crew_lat
         site_plans_today = []
         self.travel_all_day = False
-        self.work_hours, self.start_hour, self.end_hour = get_work_hours(self.config, self.state)
+        self.work_hours, self.start_hour, self.end_hour = get_work_hours(
+            self.config, self.state)
         self.state['t'].current_date = self.state['t'].current_date.replace(
             hour=int(self.start_hour))  # Set start of work
         est_mins_remaining = (self.end_hour - self.start_hour)*60
 
         # ---- Go through Sites and get travel times ----
-        # 1) Route Planning - add them to a temporary site plan list.
-        #      Choose site from site plan list based on travel time.
-        #      Remove choosen site from site pool, then get new travel
-        #      times and repeat (using while loop).
+        # 1) Route Planning - Generate matrix of sites + travel time
+        #       use the matrix to determine the next site to add to site plan
         # 2) No Route Planning - Fill the day with sites visits and
         #      return the days site plan.
 
-        exit_flag = True
-        site_cnt = 0
-        # While loop is only needed for
+        max_mins = est_mins_remaining
+
+        current_loc = [start_lat, start_lon]
+        # Loop through sites
         while est_mins_remaining > 0 and len(site_pool) > 0:
-            site_plans_tmp = []
-            for sidx, site in enumerate(site_pool):
-                site_cnt += 1
-                site_plan = self.plan_visit(site, est_mins_remaining=est_mins_remaining)
-                # site plans are dicts that include  site, LDAR_minsand go_to_site keys.
-                # Site plan can be empty if weather does not permit travel
-                if site_plan and site_plan['go_to_site']:
-                    if self.config['scheduling']['route_planning']:
-                        site_plans_tmp.append(site_plan)
-                    else:
-                        # The site order will not change if route_planning is not used
-                        site_plans_today.append(site_plan)
-                        est_mins_remaining -= site_plan['LDAR_mins']
-                        # # The following will allow the program to keep trying sites
-                        # # even after one has failed, in case there is another site
-                        # # that mets the criterea
-                        # if est_mins_remaining <= 0:
-                        #     # if the day has been filled with surveys exit for and while
-                        #     # loop
-                        #     exit_flag = True
-                        #     break
-                        exit_flag = False
-                else:
-                    exit_flag = True
-                    break
-
-            # If there is no route planning and the day has been filled with surveys
-            # or all of the sites have been checked, exit the while loop
-            if not self.config['scheduling']['route_planning'] \
-                    and (exit_flag or sidx == len(site_pool) - 1):
-                break
-
-            # if a crew has sites they can go to then choose site from list
+            # Logic for route planning
             if self.config['scheduling']['route_planning']:
-                if len(site_plans_tmp) > 0:
-                    # choose a site to visit (rollover site, route planning site
-                    # or longest time without survey)
-                    site_plan = self.choose_site(site_plans_tmp)
+                travel_matrix = self.travel_mat(current_loc, site_pool)
+                travel_np = np.array(travel_matrix)
+
+                # Find indice of shortest travel time
+                travel_time = travel_np.T[1]
+                # Edge case:
+                # If shortest distance * time is longer than the maximum time, set the closest distance to some distance that results in a full day of traveling
+                if np.amin(travel_time) > max_mins:
+                    min_indice = np.where(
+                        travel_time == np.amin(travel_time))[0][0]
+                    travel_matrix[min_indice] = max_mins
+                min_indice = np.where(
+                    travel_time == np.amin(travel_time))[0][0]
+                # if shortest travel time is less than estimated remaining time
+                # find the next site to travel to
+                # else, break out of loop to end day?
+                if (np.amin(travel_time) < est_mins_remaining):
+                    goto_site = travel_matrix[min_indice][0]
+                    site_plan = self.plan_visit(
+                        goto_site, est_mins_remaining=est_mins_remaining, maxmins=max_mins)
                     site_plans_today.append(site_plan)
                     est_mins_remaining -= site_plan['LDAR_mins']
                     site_ID = site_plan['site']['facility_ID']
                     # remove choosen site from site pool
-                    site_pool = [s for s in site_pool if s['facility_ID'] != site_ID]
+                    site_pool = [
+                        s for s in site_pool if s['facility_ID'] != site_ID]
                     self.crew_lon = site_plan['site']['lon']
                     self.crew_lat = site_plan['site']['lat']
                 else:
                     break
-        # -----------------------------
+            # If no routing
+            else:
+                cnt = 0
+                for site in site_pool:
+                    cnt += 1
+                    site_plan = self.plan_visit(
+                        site, est_mins_remaining=est_mins_remaining)
+                    if site_plan and site_plan['go_to_site']:
+                        site_plans_today.append(site_plan)
+                        est_mins_remaining -= site_plan['LDAR_mins']
+                    else:
+                        break
+                if cnt >= (len(site_pool)-1):
+                    break
 
-        # add a site to the rollover list if there are still remainin mins in survey
         if len(site_plans_today) > 0:
             if site_plans_today[-1]['remaining_mins'] > 0:
                 self.rollover = site_plans_today[-1]
         else:
             self.travel_all_day = True
-        # The crew does not actually travel this is only done for planning purposes
         self.crew_lon, self.crew_lat = start_lon, start_lat
-
         return site_plans_today
 
     def end_day(self, site_pool, itinerary):
@@ -172,7 +168,7 @@ class Schedule():
             self.state['t'].current_date += timedelta(
                 minutes=int(itinerary[-1]['travel_home_mins']))
 
-    def plan_visit(self, site, next_site=None, est_mins_remaining=None):
+    def plan_visit(self, site, next_site=None, est_mins_remaining=None, maxmins=None):
         """ Check survey and travel times and see if there is enough time
             to go to site. If a site survey was started on a previous day
             the amount of minutes rolled over will be used for survey time.
@@ -211,7 +207,14 @@ class Schedule():
             LDAR_mins = int(site['{}_time'.format(name)])
         # Get travel time minutes, and check if there is enough time.
         travel_to_plan = self.upd_travel_time_loc(next_loc=site)
-        travel_home_plan = self.upd_travel_time_loc(next_loc=next_site, is_homebase=True)
+        travel_home_plan = self.upd_travel_time_loc(
+            next_loc=next_site, is_homebase=True)
+
+        # If max minute is given, make sure that travel time cannot be grater than max minute. if greater set at max minute-1
+        if maxmins:
+            if travel_to_plan['travel_time'] > maxmins:
+                travel_home_plan['travel_time'] = maxmins - 1
+
         survey_times = self.check_visit_time(
             LDAR_mins,
             travel_to_plan['travel_time'],
@@ -257,12 +260,15 @@ class Schedule():
                     self.crew_lon, self.crew_lat,
                     next_loc['lon'], next_loc['lat'], "Haversine")
 
-            speed = np.random.choice(self.config['scheduling']['travel_speeds'])
+            speed = np.random.choice(
+                self.config['scheduling']['travel_speeds'])
             travel_time = (distance/speed)*60
+
         # ----------------------------------------------------------
         else:
             travel_time = np.random.choice(self.config['t_bw_sites']['vals'])
         # returned dictionary
+
         out_dict = {
             'travel_time': travel_time,
             'next_loc': next_loc,
@@ -364,3 +370,25 @@ class Schedule():
             # travel time is sampled if not active route_planning
             self.last_site_travel_home_min = np.random.choice(
                 self.config['t_bw_sites']['vals'])
+
+    # ----------------------------------------------------
+    def travel_mat(self, current_loc, site_pool):
+        """
+        Creates a matrix of all the time between sites in the site pool
+
+        Args:
+            current_loc: current site
+            site_pool: pool of sites to base the matrix
+        Returns:
+            Matrix[site, time]
+        """
+        survey_matrix = []
+        # Generate matrix based off time since survey needed
+        for site in site_pool:
+            # Append site into, with associated distance
+            dist = get_distance(
+                current_loc[0], current_loc[1], site['lat'], site['lon'], "Haversine")
+            speed = np.random.choice(
+                self.config['scheduling']['travel_speeds'])
+            survey_matrix.append([site, dist / speed])
+        return survey_matrix

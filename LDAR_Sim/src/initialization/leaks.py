@@ -27,14 +27,12 @@ from utils.distributions import leak_rvs
 
 def generate_leak(program, site, start_date, leak_count, days_active=0, day_ts_began=0):
     """ Generate a single leak at a site
-
     Args:
         program (dict): Program parameter dictionary
         site (dict): Site parameter and variable dictionary
         start_date (datetime): Leak start date
         leak_count (integer): Number of leaks at site, used for creating id
         days_active (int, optional): Days the leak has been active. Defaults to 0.
-
     Returns:
         dict: Leak object
     """
@@ -76,25 +74,29 @@ def generate_leak(program, site, start_date, leak_count, days_active=0, day_ts_b
 
 def generate_leak_timeseries(program, site, leak_count=0):
     """ Generate a time series of leaks for a single site
-
     Args:
         program (dict): Program parameter dictionary
         site (dict): Site parameter and variable dictionary
         leak_count (integer): Number of leaks at site, used for creating id
-
     Returns:
         list: Timeseries of leaks at a site. None is a placeholder for days without leaks
     """
+    LPR = None
+    if program['subtype_file'] is not None:
+        LPR = site['LPR']
+    else:
+        LPR = program['emissions']['LPR']
     # Get leak timeseries
     start_date = datetime(*program['start_date'])
     n_timesteps = (datetime(*program['end_date'])-start_date).days
     site_timeseries = []
     for t in range(n_timesteps):
-        if random.binomial(1, program['emissions']['LPR']):
+        if random.binomial(1, LPR):
             cur_dt = start_date + timedelta(days=t)
             site['cum_leaks'] += 1
             site_timeseries.append(generate_leak(program, site, cur_dt,
                                    site['cum_leaks'], day_ts_began=t))
+
         else:
             site_timeseries.append(None)
     return site_timeseries
@@ -102,23 +104,29 @@ def generate_leak_timeseries(program, site, leak_count=0):
 
 def generate_initial_leaks(program, site):
     """ Generate initial leaks at a site
-
     Args:
         program (dict): Program parameter dictionary
         site (dict): Site parameter and variable dictionary
-
     Returns:
         list: List of leaks at a site
     """
-    # Get distribit
-    n_leaks = random.binomial(program['NRd'], program['emissions']['LPR'])
+    NRd = None
+    LPR = None
+    if program['subtype_file'] is not None:
+        NRd = site['NRd']
+        LPR = site['LPR']
+    else:
+        NRd = program['NRd']
+        LPR = program['emissions']['LPR']
+
+    n_leaks = random.binomial(NRd, LPR)
     prog_start_date = datetime(*program['start_date'])
     initial_site_leaks = []
     site.update({'initial_leaks': n_leaks, 'cum_leaks': n_leaks})
     leak_count = 0
     for leak in range(n_leaks):
         leak_count += 1
-        days_active = random.randint(0, high=program['NRd'])
+        days_active = random.randint(0, high=NRd)
         leak_start_date = prog_start_date - timedelta(days=days_active)
         initial_site_leaks.append(
             generate_leak(

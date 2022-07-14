@@ -10,6 +10,7 @@ site_samples: 500
 subtype_times_file: "_placeholder_str_"
 consider_weather: False
 repair_delay: 14
+subtype_file: "_placeholder_str_"
 emissions:
   consider_venting: False
   leak_dist_params: [-2.776, 1.462]
@@ -29,5 +30,4 @@ economics:
   sale_price_natgas: 3.0
   repair_costs:
     vals: [200]
-    file: "_placeholder_str_"
   verification_cost: 0
