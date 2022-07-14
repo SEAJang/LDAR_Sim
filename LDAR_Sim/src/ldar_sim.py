@@ -68,13 +68,14 @@ class LdarSim:
         if params['emissions']['vent_file'] is not None:
             state['empirical_sites'] = np.array(pd.read_csv(
                 params['input_directory'] / params['emissions']['vent_file']))
-        if params['economics']['repair_costs']['file'] is not None:
-            repair_file = True
-            # Need to change here ########################################### read_csv needs index_col
-            # maybe have a variable that gets changed to true if repair_costs file present???
-            params['economics']['repair_costs']['vals'] = np.array(pd.read_csv(
-                params['input_directory'] / params['economics']['repair_costs']['file']))
-            # Read in the sites as a list of dictionaries
+        if ('file' in params['economics']['repair_costs'].keys()):
+            if params['economics']['repair_costs']['file'] is not None:
+                repair_file = True
+                # Need to change here ########################################### read_csv needs index_col
+                # maybe have a variable that gets changed to true if repair_costs file present???
+                params['economics']['repair_costs']['vals'] = np.array(pd.read_csv(
+                    params['input_directory'] / params['economics']['repair_costs']['file']))
+                # Read in the sites as a list of dictionaries
         if len(state['sites']) < 1:
             state['sites'], _, _ = generate_sites(
                 params, params['input_directory'])
