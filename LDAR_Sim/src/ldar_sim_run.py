@@ -44,7 +44,8 @@ def ldar_sim_run(simulation):
     simulation = copy.deepcopy(simulation)
     parameters = simulation['program']
     parameters['input_directory'] = simulation['input_directory']
-    parameters['output_directory'] = simulation['output_directory'] / parameters['program_name']
+    parameters['output_directory'] = simulation['output_directory'] / \
+        parameters['program_name']
     parameters['pregenerate_leaks'] = simulation['pregenerate_leaks']
     parameters['leak_timeseries'] = simulation['leak_timeseries']
     parameters['initial_leaks'] = simulation['initial_leaks']
@@ -84,7 +85,8 @@ def ldar_sim_run(simulation):
         'weather': None,  # weather gets assigned during initialization
         'daylight': None,  # daylight hours calculated during initialization
         # 'init_leaks': [],  # the initial leaks generated at timestep 1
-        'empirical_vents': [0],  # vent distribution created during initialization
+        # vent distribution created during initialization
+        'empirical_vents': [0],
         'max_leak_rate': None,  # the largest leak in the input file
     }
 
@@ -111,15 +113,18 @@ def ldar_sim_run(simulation):
     parameters.update({'timesteps': state['t'].timesteps})
     sim = LdarSim(global_params, state, parameters, timeseries)
     start_date = datetime(*parameters['start_date'])
+    print("Running simulation...")
     # Loop through timeseries
     for ts in range(state['t'].timesteps):
         state['t'].current_timestep = ts
         state['t'].current_date = start_date + timedelta(days=ts)
         if parameters['seed_timeseries']:
-            np_rand.seed(parameters['seed_timeseries'][state['t'].current_timestep])
-            rand.seed(parameters['seed_timeseries'][state['t'].current_timestep])
+            np_rand.seed(parameters['seed_timeseries']
+                         [state['t'].current_timestep])
+            rand.seed(parameters['seed_timeseries']
+                      [state['t'].current_timestep])
         sim.update()
-
+    print("Finished simulations, finalizing results...")
     # Clean up and write files
     sim_summary = sim.finalize()
     logfile.close()

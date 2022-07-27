@@ -19,6 +19,9 @@
 #
 # ------------------------------------------------------------------------------
 
+from tracemalloc import start
+
+
 def get_work_hours(config, state):
     """ Get hours in day the crew is able to work
     """
@@ -32,10 +35,12 @@ def get_work_hours(config, state):
     else:
         work_hours = config['max_workday']
 
-    if work_hours < 24 and work_hours != 0:
+    if work_hours <= 24 and work_hours > 0:
         start_hour = (24 - work_hours) / 2
         end_hour = start_hour + work_hours
-
+    else:
+        start_hour = 0
+        end_hour = 0
     return work_hours, start_hour, end_hour
 
 

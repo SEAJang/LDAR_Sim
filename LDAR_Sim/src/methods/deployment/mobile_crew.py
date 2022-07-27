@@ -95,7 +95,7 @@ class Schedule():
         # 2) No Route Planning - Fill the day with sites visits and
         #      return the days site plan.
 
-        max_mins = est_mins_remaining
+        max_mins = self.work_hours * 60
 
         current_loc = [start_lat, start_lon]
         # Loop through sites
@@ -112,16 +112,18 @@ class Schedule():
                 if np.amin(travel_time) > max_mins:
                     min_indice = np.where(
                         travel_time == np.amin(travel_time))[0][0]
-                    travel_matrix[min_indice] = max_mins
+                    travel_matrix[min_indice][1] = max_mins - 1
                 min_indice = np.where(
                     travel_time == np.amin(travel_time))[0][0]
                 # if shortest travel time is less than estimated remaining time
                 # find the next site to travel to
-                # else, break out of loop to end day?
+                # else, break out of loop to end day
                 if (np.amin(travel_time) < est_mins_remaining):
                     goto_site = travel_matrix[min_indice][0]
                     site_plan = self.plan_visit(
-                        goto_site, est_mins_remaining=est_mins_remaining, maxmins=max_mins)
+                        goto_site, est_mins_remaining=est_mins_remaining)
+                    if site_plan is None:
+                        break
                     site_plans_today.append(site_plan)
                     est_mins_remaining -= site_plan['LDAR_mins']
                     site_ID = site_plan['site']['facility_ID']
@@ -150,8 +152,8 @@ class Schedule():
         if len(site_plans_today) > 0:
             if site_plans_today[-1]['remaining_mins'] > 0:
                 self.rollover = site_plans_today[-1]
-        else:
-            self.travel_all_day = True
+            else:
+                self.travel_all_day = True
         self.crew_lon, self.crew_lat = start_lon, start_lat
         return site_plans_today
 
@@ -197,7 +199,7 @@ class Schedule():
                                          self.state['t'].current_timestep]:
             return None
         if self.rollover:
-            if site['facility_ID'] == self.rollover['site']['facility_ID']:
+            if site['facility_ID'] == self.rollover['site']['facility_ID'] and self.rollover['remaining_mins'] is not None:
                 # Remove facility from rollover list, and retrieve remaining survey minutes
                 LDAR_mins = self.rollover['remaining_mins']
             else:
@@ -213,7 +215,7 @@ class Schedule():
         # If max minute is given, make sure that travel time cannot be grater than max minute. if greater set at max minute-1
         if maxmins:
             if travel_to_plan['travel_time'] > maxmins:
-                travel_home_plan['travel_time'] = maxmins - 1
+                travel_to_plan['travel_time'] = maxmins - 1
 
         survey_times = self.check_visit_time(
             LDAR_mins,
@@ -262,7 +264,8 @@ class Schedule():
 
             speed = np.random.choice(
                 self.config['scheduling']['travel_speeds'])
-            travel_time = (distance/speed)*60
+            # Get travel time in hours, then convert to minutes
+            travel_time = (distance/speed) * 60 / 5
 
         # ----------------------------------------------------------
         else:
@@ -305,7 +308,11 @@ class Schedule():
                 LDAR_mins_onsite = survey_mins
 
         remaining_mins = survey_mins - LDAR_mins_onsite
-        LDAR_mins = travel_to_mins + LDAR_mins_onsite
+        # If you don't go to site, LDAR-mins should be 0, otherwise, the total of LDAR_onsite and travel
+        if not go_to_site:
+            LDAR_mins = 0
+        else:
+            LDAR_mins = travel_to_mins + LDAR_mins_onsite
         if go_to_site:
             self.last_site_travel_home_min = travel_home_mins
         out_dict = {
@@ -390,5 +397,5 @@ class Schedule():
                 current_loc[0], current_loc[1], site['lat'], site['lon'], "Haversine")
             speed = np.random.choice(
                 self.config['scheduling']['travel_speeds'])
-            survey_matrix.append([site, dist / speed])
+            survey_matrix.append([site, dist / speed*60])
         return survey_matrix

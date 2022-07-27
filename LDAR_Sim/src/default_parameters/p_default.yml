@@ -9,7 +9,9 @@ infrastructure_file: 'facilities_alberta.csv'
 site_samples: 100
 subtype_times_file: "_placeholder_str_"
 consider_weather: False
-repair_delay: 14
+repair_delay: 
+  type: 'default'
+  val: [14]
 subtype_file: "_placeholder_str_"
 emissions:
   consider_venting: False

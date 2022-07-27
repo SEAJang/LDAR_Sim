@@ -59,7 +59,8 @@ def detect_emissions(self, site, covered_leaks, covered_equipment_rates, covered
 
     for leak in covered_leaks:
         k = np.random.normal(4.9, 0.3)
-        x0 = np.random.normal(self.config['sensor']['MDL'][0], self.config['sensor']['MDL'][1])
+        x0 = np.random.normal(
+            self.config['sensor']['MDL'][0], self.config['sensor']['MDL'][1])
         x0 = math.log10(x0 * 3600)  # Convert from g/s to g/h and take log
 
         if leak['rate'] == 0:
@@ -70,10 +71,19 @@ def detect_emissions(self, site, covered_leaks, covered_equipment_rates, covered
 
         if np.random.binomial(1, prob_detect):
             found_leak = True
-            is_new_leak = update_tag(leak, site, self.timeseries, self.state['t'],
-                                     self.config['label'], self.id)
+            is_new_leak = update_tag(
+                leak,
+                measured_rate,
+                site,
+                self.timeseries,
+                self.state['t'],
+                self.config['label'],
+                self.id,
+                self.parameters
+            )
             if is_new_leak:
-                site_measured_rate += measured_rate(leak['rate'], self.config['sensor']['QE'])
+                site_measured_rate += measured_rate(
+                    leak['rate'], self.config['sensor']['QE'])
         else:
             site[missed_leaks_str] += 1
             self.timeseries[missed_leaks_str][self.state['t'].current_timestep] += 1

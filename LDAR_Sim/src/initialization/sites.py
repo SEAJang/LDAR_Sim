@@ -30,6 +30,7 @@ import pandas as pd
 from initialization.leaks import (generate_initial_leaks,
                                   generate_leak_timeseries)
 from utils.distributions import fit_dist, unpackage_dist
+from methods.init_func.repair_delay import determine_delay
 
 
 def init_generator_files(generator_dir, sim_params, in_dir, baseline_prog):
@@ -156,6 +157,10 @@ def generate_sites(program, in_dir):
         initial_leaks.update({site['facility_ID']: initial_site_leaks})
         site_timeseries = generate_leak_timeseries(program, site)
         leak_timeseries.update({site['facility_ID']: site_timeseries})
+
+        # Determine repair delay for each site
+        site['repair_delay'] = determine_delay(program)
+
     return sites, leak_timeseries, initial_leaks
 
 
@@ -178,6 +183,7 @@ def regenerate_sites(program, prog_0_sites, in_dir):
         new_site.update({'cum_leaks': site_or['cum_leaks'],
                          'initial_leaks': site_or['initial_leaks'],
                          'leak_rate_dist': site_or['leak_rate_dist'],
-                         'leak_rate_units': site_or['leak_rate_units']})
+                         'leak_rate_units': site_or['leak_rate_units'],
+                         'repair_delay': site_or['repair_delay']})
         out_sites.append(new_site)
     return out_sites

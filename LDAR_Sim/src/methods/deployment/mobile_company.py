@@ -138,11 +138,15 @@ class Schedule():
         Returns:
             int: Number of crews to deploy that day.
         """
-        n_sites = len(site_pool)
-        n_working_crews = math.ceil(n_sites/self.config['est_site_p_day'])
-        # cap working crews at max number of crews
-        if n_working_crews > n_crews:
+
+        if self.config['scheduling']['route_planning']:
             n_working_crews = n_crews
+        else:
+            n_sites = len(site_pool)
+            n_working_crews = math.ceil(n_sites/self.config['est_site_p_day'])
+            # cap working crews at max number of crews
+            if n_working_crews > n_crews:
+                n_working_crews = n_crews
         return n_working_crews
 
     def get_crew_site_list(self, site_pool, crew_ID, n_crews, crews=None):
@@ -160,7 +164,8 @@ class Schedule():
         """
         if self.config['scheduling']['route_planning']:
             # divies the site pool based on clustering analysis
-            crew_site_list = [site for site in site_pool if site['crew_ID'] == crew_ID]
+            crew_site_list = [
+                site for site in site_pool if site['crew_ID'] == crew_ID]
         else:
             # This offsets by the crew number and increments by the
             # number of crews, n_crews= 3 ,  site_pool = [site[0], site[3], site[6]...]
