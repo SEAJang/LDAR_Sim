@@ -209,6 +209,8 @@ class LdarSim:
         timeseries['n_tags'] = np.zeros(self.parameters['timesteps'])
         timeseries['rolling_cost_estimate'] = np.zeros(
             self.parameters['timesteps'])
+        timeseries['rolling_cost_estimate_b'] = np.zeros(
+            self.parameters['timesteps'])
 
         # Initialize method(s) to be used; append to state
         calculate_daylight = False
@@ -382,10 +384,17 @@ class LdarSim:
                     lk['repair_delay'] = (
                         lk['date_repaired'] - lk['date_tagged']).days
                     if lk['tagged_by_company'] != 'natural':
-                        est_duration = cur_ts - lk['estimated_date_began']
-                        # Estimated volume in kg. g/s => kg/day is 86.4
-                        lk['estimated_volume'] = est_duration * \
-                            lk['measured_rate']*86.4
+                        # check if estimate is needed to be kept track of
+                        if site['estimate_A']:
+                            est_duration = cur_ts - lk['estimated_date_began']
+                            # Estimated volume in kg. g/s => kg/day is 86.4
+                            lk['estimated_volume'] = est_duration * \
+                                lk['measured_rate']*86.4
+                        elif site['estimate_B']:
+                            est_duration = cur_ts - lk['estimated_date_began']
+                            # Estimated volume in kg. g/s => kg/day is 86.4
+                            lk['estimated_volume_b'] = est_duration * \
+                                lk['measured_rate']*86.4
                     if lk['day_ts_began'] < 0:
                         duration = cur_ts
                     else:

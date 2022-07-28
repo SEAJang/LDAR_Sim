@@ -19,7 +19,7 @@ def determine_delay(program):
         delay_ind = random.randint(0, list_len-1)
         delay = program['repair_delay']['val'][delay_ind]
     elif program['repair_delay']['type'] == 'distribution':
-        delay = np.random.normal(
+        delay = np.random.lognormal(
             program['repair_delay']['val'][0], program['repair_delay']['val'][1])
 
     return delay
