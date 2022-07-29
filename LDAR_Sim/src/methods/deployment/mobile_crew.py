@@ -152,9 +152,10 @@ class Schedule():
         if len(site_plans_today) > 0:
             if site_plans_today[-1]['remaining_mins'] > 0:
                 self.rollover = site_plans_today[-1]
+                self.travel_all_day = True
             else:
                 self.travel_all_day = True
-        self.crew_lon, self.crew_lat = start_lon, start_lat
+        #self.crew_lon, self.crew_lat = start_lon, start_lat
         return site_plans_today
 
     def end_day(self, site_pool, itinerary):
@@ -216,6 +217,8 @@ class Schedule():
         if maxmins:
             if travel_to_plan['travel_time'] > maxmins:
                 travel_to_plan['travel_time'] = maxmins - 1
+            if travel_home_plan['travel_time'] > maxmins:
+                travel_home_plan['travel_time'] = maxmins - 1
 
         survey_times = self.check_visit_time(
             LDAR_mins,

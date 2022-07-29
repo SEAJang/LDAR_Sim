@@ -11,7 +11,7 @@ subtype_times_file: "_placeholder_str_"
 consider_weather: False
 repair_delay: 
   type: 'default'
-  val: [14]
+  val: [14.0]
 subtype_file: "_placeholder_str_"
 emissions:
   consider_venting: False
